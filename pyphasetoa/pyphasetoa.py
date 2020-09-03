@@ -255,7 +255,7 @@ class bttSignal():
 
         noise_std : positive float. This is the standard deviation of the noise you want to add to the proximity probe signal. The noise is normally distributed with a mean of 0.
 
-        returns A Pandas DataFrame containing all the ToAs and a Series containing all the t_start values
+        returns A Pandas DataFrame containing the tip deflections in micro radians
         """
         # First determine if the pulse locations have been determined thus far, if not, calculate them
         if self.pulse_locations is None:
