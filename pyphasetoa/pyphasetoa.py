@@ -152,11 +152,22 @@ class bttSignal():
         is indicated in a column next to the signal.
         """
         def getTheta(x):
+            #print("UNIQUE REVOS::")
+            #print(x['revo'].unique())
+            #x.index = np.arange(x)
             t_start = x.iloc[0]['t_start']
             t_end = x.iloc[0]['t_end']
             f = interp1d([t_start, t_end],[0,2*np.pi])
-            return f(x['original_time'])
-
+            try:
+                return f(x['original_time'])
+            except:
+                #print("ORIGINAL TIME", x['original_time'].iloc[0], x['original_time'].iloc[-1])
+                #print("TSTART:", t_start, "TEND:", t_end)
+                #print(x['original_time'].iloc[-1] > t_end)
+                #print(x['original_time'].iloc[0] < t_start)
+                #print("MAX ORIGINAL TIME:", x['original_time'].sort_values())
+                x['original_time'].plot()
+                raise ValueError
         self.df_ref = pd.DataFrame(self.probe[::decimation])
 
         #self.df_ref['revo'] = 0
@@ -183,7 +194,8 @@ class bttSignal():
         self.df_ref = self.df_ref.dropna()
         self.df_ref['revo'] = self.df_ref['revo'].astype(int)
         self.df_ref['original_time'] =self.df_ref.index
-        self.df_ref.index = self.df_ref.index - self.df_ref['t_start']
+        #self.df_ref.index = self.df_ref.index - self.df_ref['t_start']
+        self.df_ref.index = np.arange(len(self.df_ref))
         theta_order_tracked = []
         for i, j in self.df_ref.groupby('revo').groups.items():
             theta_order_tracked.extend( getTheta( self.df_ref.loc[j] ) )
@@ -228,9 +240,9 @@ class bttSignal():
             self.pulse_locations['Theta_left'] -= width
 
     def calculateX(self, methods=['phase','threshold', 'constant-fraction'], params={}, decimation=1, noise_std=None, verbose=True):
-        """ This function calculates the tip deflections using one of five methods. This function is the only function that should get called using this library.
+        """ This function calculates the tip deflections using one of three methods. This function is the only function that should get called using this library.
 
-        methods : A list of str. Can contain 'phase', 'threshold', 'constant-fraction', 'maxvalue', 'maxchangerate'. All the methods listed will be used to calculate the tip deflection.
+        methods : A list of str. Can contain 'phase', 'threshold' and/or 'constant-fraction'. All the methods listed will be used to calculate the tip deflection.
 
         params : A dictionary specifying the hyperparameters for the the specified method. The format is:
             params = {
@@ -253,7 +265,7 @@ class bttSignal():
 
         verbose: Bool. A setting that allows for the printing of infomation during the analysis.
 
-        noise_std : positive float. This is the standard deviation of the noise you want to add to the proximity probe signal. The noise is normally distributed with a mean of 0.
+        noise_std : positive float. This is the standard deviation of the noise you want to add to the proximity probe signal. The noise is normally distributed with a mean of 0. If None, no noise is added.
 
         returns A Pandas DataFrame containing the tip deflections in micro radians
         """
@@ -266,7 +278,7 @@ class bttSignal():
         info = self.info()
         # First decimate the results
         self._makeRefSignal(decimation=decimation)
-
+        # Now get the algorithms parameters
         if 'phase' in methods:
             phase_params = params.get('phase', {})
             phase_params.get('rho')
@@ -299,12 +311,20 @@ class bttSignal():
             threshold_gradient = threshold_params.get('gradient', 1)
 
             threshold_results = []
+            
+            if verbose:
+                print('-------------------------------------------')
+                print("THRESHOLD VOLTAGE CROSSING")
+                print('CALCULATING PULSE LOCATIONS USING THE FOLLOWING PARAMETERS')
+                print("THRESHOLD VALUE:", threshold_value)
+                print("GRADIENT VALUE:", threshold_gradient)
         
         if 'constant-fraction' in methods:
             cf_params = params.get('constant-fraction', {})
             cf_frac = cf_params.get('frac', 0.5)
 
             cf_results = []
+        
         index = []
         for revo in tqdm(self.df_ref.revo.unique()):
             index.append(f"Rev {revo}")
@@ -339,9 +359,13 @@ class bttSignal():
                 new_x = np.arange(0,2*np.pi, d_theta/2)
                 threshold_calc_series = pd.Series(f_interp(new_x), index = new_x)
                 # Now ensure you pick the first value from each bin
-                result = self.applyThreshold(threshold_calc_series,threshold_value=threshold_value,gradient=threshold_gradient)
+                result = self.applyThreshold(threshold_calc_series,
+                                             threshold_value=threshold_value,
+                                             gradient=threshold_gradient)
                 result_dict = {}
-                for left, right, count in zip(self.pulse_locations['Theta_left'].tolist(), self.pulse_locations['Theta_right'].tolist(), np.arange(len(self.pulse_locations['Theta_left']))):
+                for left, right, count in zip(self.pulse_locations['Theta_left'].tolist(),
+                                              self.pulse_locations['Theta_right'].tolist(),
+                                              np.arange(len(self.pulse_locations['Theta_left']))):
                     result_dict[count] = result[(result > left) & (result < right)].iloc[0]                
                 threshold_results.append(result_dict)
             
