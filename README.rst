@@ -19,8 +19,7 @@ pyphasetoa
 A Python package used to calculate the ToA of a blade at a sensor using the instantaneous phase of a proxmity probe signal.
 
 
-* Free software: MIT license
-* Documentation: https://pyphasetoa.readthedocs.io.
+* Free for non commercial usage. See the LICENSE file.
 
 
 Features
