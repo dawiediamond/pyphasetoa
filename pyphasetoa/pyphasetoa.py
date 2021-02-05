@@ -37,6 +37,8 @@ class bttSignal():
         self.filt_width = None
         self.filt_theta = None
         self.d_theta = None
+
+        self.verbose = False
     
     def info(self):
         """ A function used to print general information about the raw probe and tacho signals.
@@ -214,6 +216,10 @@ class bttSignal():
         info = self.info()
         threshold_value = (info['probe_volt_max'] - info['probe_volt_min']) * threshold + info['probe_volt_min']
         
+        if self.verbose:
+            print("function: _getPulseLocations")
+            print(f"threshold_value = {threshold_value}")
+
         ix = self.df_ref['revo'] == 0
         series_for_localisation = pd.Series(self.df_ref.loc[ix, 'probe'].values,
              index=self.df_ref.loc[ix, 'original_time'])
@@ -403,12 +409,14 @@ class bttSignal():
             # Do threshold results
             df_threshold_results = pd.DataFrame(threshold_results, index=index)
             X_threshold = -1*(df_threshold_results - df_threshold_results.iloc[0]) * 1000000
+            return_dict['threshold-zeros[radians]'] = df_threshold_results.iloc[0]
             return_dict['threshold'] = X_threshold.iloc[1:, :]
         
         if 'constant-fraction' in methods:
             # Do constant fraction crossing results
             df_cf = pd.DataFrame(cf_results, index=index)
             X_cf = -1*(df_cf - df_cf.iloc[0]) * 1000000
+            return_dict['constant-fraction-zeros[radians]'] = df_cf.iloc[0]
             return_dict['constant-fraction'] = X_cf.iloc[1:, :]
         return return_dict
 
